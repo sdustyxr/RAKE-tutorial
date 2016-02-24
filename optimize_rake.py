@@ -1,3 +1,6 @@
+from __future__ import absolute_import
+from __future__ import print_function
+from six.moves import range
 __author__ = 'a_medelyan'
 import test_data
 import rake
@@ -29,7 +32,7 @@ for min_char_length in range(3,8):
                         if keywords[i][0] in set(test_doc.keywords):
                             correct += 1
                 except IndexError:
-                    print "Problem with evaluating ", keywords
+                    print("Problem with evaluating ", keywords)
 
                 precision = correct/float(top)
                 recall = correct/float(num_manual_keywords)
@@ -44,10 +47,10 @@ for min_char_length in range(3,8):
                 best_fmeasure = avg_fmeasure
                 best_vals = [min_char_length, max_words_length, min_keyword_frequency]
 
-            print min_char_length, max_words_length, min_keyword_frequency, "\t", avg_fmeasure
+            print(min_char_length, max_words_length, min_keyword_frequency, "\t", avg_fmeasure)
 
-print ""
-print "Best result at ", best_fmeasure
-print "with\tmin_char_length", best_vals[0]
-print "\tmax_words_length", best_vals[1]
-print "\tmin_keyword_frequency", best_vals[2]
+print("")
+print("Best result at ", best_fmeasure)
+print("with\tmin_char_length", best_vals[0])
+print("\tmax_words_length", best_vals[1])
+print("\tmin_keyword_frequency", best_vals[2])

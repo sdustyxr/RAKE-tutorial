@@ -1,6 +1,7 @@
+from __future__ import absolute_import
 __author__ = 'a_medelyan'
 import os
-
+import io
 
 # class to hold our test instance (document plus its correct manual keywords)
 class TestDoc:
@@ -17,7 +18,7 @@ def read_data(input_dir):
 
     for doc in os.listdir(input_dir):
 
-        file_reader = open(os.path.join(input_dir,doc), 'r')
+        file_reader = io.open(os.path.join(input_dir,doc), 'r',encoding="iso-8859-1")
         file_name = doc[:-4]
         if file_name not in test_set:
             d = TestDoc(file_name)

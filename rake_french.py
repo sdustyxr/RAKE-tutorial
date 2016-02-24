@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 __author__ = 'a_medelyan'
 import rake
 
@@ -16,4 +18,4 @@ keywords = rake_object.run(text)
 
 # 3. print results
 for k in keywords:
-    print k[0]
+    print(k[0])

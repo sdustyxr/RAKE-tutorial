@@ -10,8 +10,12 @@
 # as well as the ability to set frequency and phrase length parameters
 # important when dealing with longer documents
 
+from __future__ import absolute_import
+from __future__ import print_function
 import re
 import operator
+import six
+from six.moves import range
 
 debug = False
 test = False
@@ -174,7 +178,7 @@ class Rake(object):
 
         keyword_candidates = generate_candidate_keyword_scores(phrase_list, word_scores, self.__min_keyword_frequency)
 
-        sorted_keywords = sorted(keyword_candidates.iteritems(), key=operator.itemgetter(1), reverse=True)
+        sorted_keywords = sorted(six.iteritems(keyword_candidates), key=operator.itemgetter(1), reverse=True)
         return sorted_keywords
 
 
@@ -195,15 +199,15 @@ if test:
 
     # generate candidate keyword scores
     keywordcandidates = generate_candidate_keyword_scores(phraseList, wordscores)
-    if debug: print keywordcandidates
+    if debug: print(keywordcandidates)
 
-    sortedKeywords = sorted(keywordcandidates.iteritems(), key=operator.itemgetter(1), reverse=True)
-    if debug: print sortedKeywords
+    sortedKeywords = sorted(six.iteritems(keywordcandidates), key=operator.itemgetter(1), reverse=True)
+    if debug: print(sortedKeywords)
 
     totalKeywords = len(sortedKeywords)
-    if debug: print totalKeywords
-    print sortedKeywords[0:(totalKeywords / 3)]
+    if debug: print(totalKeywords)
+    print(sortedKeywords[0:(totalKeywords / 3)])
 
     rake = Rake("SmartStoplist.txt")
     keywords = rake.run(text)
-    print keywords
+    print(keywords)
