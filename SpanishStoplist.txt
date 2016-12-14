@@ -59,7 +59,8 @@ hacen
 cada
 fin
 incluso
-primero	desde
+primeroi
+desde
 conseguir
 consigo
 consigue
@@ -118,7 +119,8 @@ entonces
 tiempo
 verdad
 verdadero
-verdadera	cierto
+verdaderai
+cierto
 ciertos
 cierta
 ciertas
