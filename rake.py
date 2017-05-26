@@ -150,13 +150,13 @@ def filter_adjoined_candidates(candidates, min_freq):
     filtered_candidates = []
     # Converts the dictionary in a list of 2-uples (candidate, frequency) and iterates over them
     for candidate, freq in candidates_freq.items():
-        #if freq >= min_freq:
-        if freq >= 1:
+        if freq >= min_freq:
             filtered_candidates.append(candidate)
     return filtered_candidates
 
 
-def generate_candidate_keywords(sentence_list, stopword_pattern, stop_word_list, min_char_length=1, max_words_length=5):
+def generate_candidate_keywords(sentence_list, stopword_pattern, stop_word_list, min_char_length=1, max_words_length=5,
+                                min_words_length_adj=1, max_words_length_adj=1, min_phrase_freq_adj=2):
     phrase_list = []
     for s in sentence_list:
         tmp = re.sub(stopword_pattern, '|', s.strip())
@@ -165,7 +165,8 @@ def generate_candidate_keywords(sentence_list, stopword_pattern, stop_word_list,
             phrase = phrase.strip().lower()
             if phrase != "" and is_acceptable(phrase, min_char_length, max_words_length):
                 phrase_list.append(phrase)
-    phrase_list += extract_adjoined_candidates(sentence_list, stop_word_list, 2, 3, max_words_length)
+    phrase_list += extract_adjoined_candidates(sentence_list, stop_word_list, min_words_length_adj,
+                                               max_words_length_adj, min_phrase_freq_adj)
     return phrase_list
 
 
@@ -239,12 +240,16 @@ def generate_candidate_keyword_scores(phrase_list, word_score, min_keyword_frequ
 
 
 class Rake(object):
-    def __init__(self, stop_words_path, min_char_length=1, max_words_length=5, min_keyword_frequency=1):
+    def __init__(self, stop_words_path, min_char_length=1, max_words_length=5, min_keyword_frequency=1,
+                 min_words_length_adj=1, max_words_length_adj=1, min_phrase_freq_adj=2):
         self.__stop_words_path = stop_words_path
         self.__stop_words_list = load_stop_words(stop_words_path)
         self.__min_char_length = min_char_length
         self.__max_words_length = max_words_length
         self.__min_keyword_frequency = min_keyword_frequency
+        self.__min_words_length_adj = min_words_length_adj
+        self.__max_words_length_adj = max_words_length_adj
+        self.__min_phrase_freq_adj = min_phrase_freq_adj
 
     def run(self, text):
         sentence_list = split_sentences(text)
@@ -252,7 +257,9 @@ class Rake(object):
         stop_words_pattern = build_stop_word_regex(self.__stop_words_list)
 
         phrase_list = generate_candidate_keywords(sentence_list, stop_words_pattern, self.__stop_words_list,
-                                                  self.__min_char_length, self.__max_words_length)
+                                                  self.__min_char_length, self.__max_words_length,
+                                                  self.__min_words_length_adj, self.__max_words_length_adj,
+                                                  self.__min_phrase_freq_adj)
 
         word_scores = calculate_word_scores(phrase_list)
 
@@ -271,12 +278,8 @@ if test:
     stoppath = "SmartStoplist.txt"  # SMART stoplist misses some of the lower-scoring keywords in Figure 1.5, which means that the top 1/3 cuts off one of the 4.0 score words in Table 1.1
     stopwordpattern = build_stop_word_regex(stoppath)
 
-    # load sotpwords
-
     # generate candidate keywords
     phraseList = generate_candidate_keywords(sentenceList, stopwordpattern, load_stop_words(stoppath))
-
-    #print(phraseList)
 
     # calculate individual word scores
     wordscores = calculate_word_scores(phraseList)
@@ -291,6 +294,8 @@ if test:
     totalKeywords = len(sortedKeywords)
     if debug: print(totalKeywords)
     print(sortedKeywords[0:(totalKeywords // 3)])
+
+    print('pippo')
 
     rake = Rake("SmartStoplist.txt")
     keywords = rake.run(text)
