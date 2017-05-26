@@ -1,4 +1,4 @@
-# Implementation of RAKE - Rapid Automtic Keyword Exraction algorithm
+# Implementation of RAKE - Rapid Automatic Keyword Extraction algorithm
 # as described in:
 # Rose, S., D. Engel, N. Cramer, and W. Cowley (2010). 
 # Automatic keyword extraction from indi-vidual documents. 
@@ -9,6 +9,12 @@
 # with a set of heuristics to decide whether a phrase is an acceptable candidate
 # as well as the ability to set frequency and phrase length parameters
 # important when dealing with longer documents
+#
+# NOTE 2: The code published by a_medelyan (https://github.com/zelandiya/RAKE-tutorial)
+# has been additionally extended by Marco Pegoraro to implement the adjoined candidate
+# feature described in section 1.2.3 of the original paper. Note that this creates the
+# need to modify the metric for the candidate score, because the adjoined candidates
+# have a very high score (because of the nature of the original score metric)
 
 from __future__ import absolute_import
 from __future__ import print_function
@@ -16,9 +22,11 @@ import re
 import operator
 import six
 from six.moves import range
+from collections import Counter
 
 debug = False
 test = False
+
 
 def is_number(s):
     try:
@@ -52,7 +60,7 @@ def separate_words(text, min_word_return_size):
     words = []
     for single_word in splitter.split(text):
         current_word = single_word.strip().lower()
-        #leave numbers in phrase, but don't count as words, since they tend to invalidate scores of their phrases
+        # leave numbers in phrase, but don't count as words, since they tend to invalidate scores of their phrases
         if len(current_word) > min_word_return_size and current_word != '' and not is_number(current_word):
             words.append(current_word)
     return words
@@ -68,8 +76,7 @@ def split_sentences(text):
     return sentences
 
 
-def build_stop_word_regex(stop_word_file_path):
-    stop_word_list = load_stop_words(stop_word_file_path)
+def build_stop_word_regex(stop_word_list):
     stop_word_regex_list = []
     for word in stop_word_list:
         word_regex = '\\b' + word + '\\b'
@@ -78,7 +85,78 @@ def build_stop_word_regex(stop_word_file_path):
     return stop_word_pattern
 
 
-def generate_candidate_keywords(sentence_list, stopword_pattern, min_char_length=1, max_words_length=5):
+#
+# Function that extracts the adjoined candidates from a list of sentences and filters them by frequency
+#
+def extract_adjoined_candidates(sentence_list, stoplist, min_keywords, max_keywords, min_freq):
+    adjoined_candidates = []
+    for s in sentence_list:
+        # Extracts the candidates from each single sentence and adds them to the list
+        adjoined_candidates += adjoined_candidates_from_sentence(s, stoplist, min_keywords, max_keywords)
+    # Filters the candidates and returns them
+    return filter_adjoined_candidates(adjoined_candidates, min_freq)
+
+
+# return adjoined_candidates
+
+#
+# Function that extracts the adjoined candidates from a single sentence
+#
+def adjoined_candidates_from_sentence(s, stoplist, min_keywords, max_keywords):
+    # Initializes the candidate list to empty
+    candidates = []
+    # Splits the sentence to get a list of words
+    sl = s.split()
+    # For each possible length of the adjoined candidate
+    for num_keywords in range(min_keywords, max_keywords + 1):
+        # Until the third-last word
+        for i in range(0, len(sl) - num_keywords):
+            # Position i marks the first word of the candidate. Proceeds only if it's not a stopword
+            if sl[i] not in stoplist:
+                candidate = sl[i]
+                # Initializes j (the pointer to the next word) to 1
+                j = 1
+                # Initializes the word counter. This counts the non-stowords words in the candidate
+                keyword_counter = 1
+                contains_stopword = False
+                # Until the word count reaches the maximum number of keywords or the end is reached
+                while keyword_counter < num_keywords and i + j < len(sl):
+                    # Adds the next word to the candidate
+                    candidate = candidate + ' ' + sl[i + j]
+                    # If it's not a stopword, increase the word counter. If it is, turn on the flag
+                    if sl[i + j] not in stoplist:
+                        keyword_counter += 1
+                    else:
+                        contains_stopword = True
+                    # Next position
+                    j += 1
+                # Adds the candidate to the list only if:
+                # 1) it contains at least a stopword (if it doesn't it's already been considered)
+                # AND
+                # 2) the last word is not a stopword
+                # AND
+                # 3) the adjoined candidate keyphrase contains exactly the correct number of keywords
+                if contains_stopword and candidate.split()[-1] not in stoplist and keyword_counter == num_keywords:
+                    candidates.append(candidate)
+    return candidates
+
+
+#
+# Function that filters the adjoined candidates to keep only those that appears with a certain frequency
+#
+def filter_adjoined_candidates(candidates, min_freq):
+    # creates a dictionary where the key is the candidate and the value is the frequency of the candidate
+    candidates_freq = Counter(candidates)
+    filtered_candidates = []
+    # Converts the dictionary in a list of 2-uples (candidate, frequency) and iterates over them
+    for candidate, freq in candidates_freq.items():
+        #if freq >= min_freq:
+        if freq >= 1:
+            filtered_candidates.append(candidate)
+    return filtered_candidates
+
+
+def generate_candidate_keywords(sentence_list, stopword_pattern, stop_word_list, min_char_length=1, max_words_length=5):
     phrase_list = []
     for s in sentence_list:
         tmp = re.sub(stopword_pattern, '|', s.strip())
@@ -87,11 +165,11 @@ def generate_candidate_keywords(sentence_list, stopword_pattern, min_char_length
             phrase = phrase.strip().lower()
             if phrase != "" and is_acceptable(phrase, min_char_length, max_words_length):
                 phrase_list.append(phrase)
+    phrase_list += extract_adjoined_candidates(sentence_list, stop_word_list, 2, 3, max_words_length)
     return phrase_list
 
 
 def is_acceptable(phrase, min_char_length, max_words_length):
-
     # a phrase must have a min length in characters
     if len(phrase) < min_char_length:
         return 0
@@ -126,13 +204,13 @@ def calculate_word_scores(phraseList):
         word_list = separate_words(phrase, 0)
         word_list_length = len(word_list)
         word_list_degree = word_list_length - 1
-        #if word_list_degree > 3: word_list_degree = 3 #exp.
+        # if word_list_degree > 3: word_list_degree = 3 #exp.
         for word in word_list:
             word_frequency.setdefault(word, 0)
             word_frequency[word] += 1
             word_degree.setdefault(word, 0)
-            word_degree[word] += word_list_degree  #orig.
-            #word_degree[word] += 1/(word_list_length*1.0) #exp.
+            word_degree[word] += word_list_degree  # orig.
+            # word_degree[word] += 1/(word_list_length*1.0) #exp.
     for item in word_frequency:
         word_degree[item] = word_degree[item] + word_frequency[item]
 
@@ -140,14 +218,13 @@ def calculate_word_scores(phraseList):
     word_score = {}
     for item in word_frequency:
         word_score.setdefault(item, 0)
-        word_score[item] = word_degree[item] / (word_frequency[item] * 1.0)  #orig.
-    #word_score[item] = word_frequency[item]/(word_degree[item] * 1.0) #exp.
+        word_score[item] = word_degree[item] / (word_frequency[item] * 1.0)  # orig.
+    # word_score[item] = word_frequency[item]/(word_degree[item] * 1.0) #exp.
     return word_score
 
 
 def generate_candidate_keyword_scores(phrase_list, word_score, min_keyword_frequency=1):
     keyword_candidates = {}
-
     for phrase in phrase_list:
         if min_keyword_frequency > 1:
             if phrase_list.count(phrase) < min_keyword_frequency:
@@ -164,7 +241,7 @@ def generate_candidate_keyword_scores(phrase_list, word_score, min_keyword_frequ
 class Rake(object):
     def __init__(self, stop_words_path, min_char_length=1, max_words_length=5, min_keyword_frequency=1):
         self.__stop_words_path = stop_words_path
-        self.__stop_words_pattern = build_stop_word_regex(stop_words_path)
+        self.__stop_words_list = load_stop_words(stop_words_path)
         self.__min_char_length = min_char_length
         self.__max_words_length = max_words_length
         self.__min_keyword_frequency = min_keyword_frequency
@@ -172,7 +249,10 @@ class Rake(object):
     def run(self, text):
         sentence_list = split_sentences(text)
 
-        phrase_list = generate_candidate_keywords(sentence_list, self.__stop_words_pattern, self.__min_char_length, self.__max_words_length)
+        stop_words_pattern = build_stop_word_regex(self.__stop_words_list)
+
+        phrase_list = generate_candidate_keywords(sentence_list, stop_words_pattern, self.__stop_words_list,
+                                                  self.__min_char_length, self.__max_words_length)
 
         word_scores = calculate_word_scores(phrase_list)
 
@@ -187,12 +267,16 @@ if test:
 
     # Split text into sentences
     sentenceList = split_sentences(text)
-    #stoppath = "FoxStoplist.txt" #Fox stoplist contains "numbers", so it will not find "natural numbers" like in Table 1.1
-    stoppath = "RAKE/SmartStoplist.txt"  #SMART stoplist misses some of the lower-scoring keywords in Figure 1.5, which means that the top 1/3 cuts off one of the 4.0 score words in Table 1.1
+    # stoppath = "FoxStoplist.txt" #Fox stoplist contains "numbers", so it will not find "natural numbers" like in Table 1.1
+    stoppath = "SmartStoplist.txt"  # SMART stoplist misses some of the lower-scoring keywords in Figure 1.5, which means that the top 1/3 cuts off one of the 4.0 score words in Table 1.1
     stopwordpattern = build_stop_word_regex(stoppath)
 
+    # load sotpwords
+
     # generate candidate keywords
-    phraseList = generate_candidate_keywords(sentenceList, stopwordpattern)
+    phraseList = generate_candidate_keywords(sentenceList, stopwordpattern, load_stop_words(stoppath))
+
+    #print(phraseList)
 
     # calculate individual word scores
     wordscores = calculate_word_scores(phraseList)
