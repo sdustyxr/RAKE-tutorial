@@ -1,7 +1,7 @@
 # Implementation of RAKE - Rapid Automatic Keyword Extraction algorithm
 # as described in:
 # Rose, S., D. Engel, N. Cramer, and W. Cowley (2010). 
-# Automatic keyword extraction from indi-vidual documents. 
+# Automatic keyword extraction from individual documents.
 # In M. W. Berry and J. Kogan (Eds.), Text Mining: Applications and Theory.unknown: John Wiley and Sons, Ltd.
 #
 # NOTE: The original code (from https://github.com/aneesha/RAKE)
@@ -25,7 +25,7 @@ from six.moves import range
 from collections import Counter
 
 debug = False
-test = False
+test = True
 
 
 def is_number(s):
@@ -105,8 +105,8 @@ def extract_adjoined_candidates(sentence_list, stoplist, min_keywords, max_keywo
 def adjoined_candidates_from_sentence(s, stoplist, min_keywords, max_keywords):
     # Initializes the candidate list to empty
     candidates = []
-    # Splits the sentence to get a list of words
-    sl = s.split()
+    # Splits the sentence to get a list of lowercase words
+    sl = s.lower().split()
     # For each possible length of the adjoined candidate
     for num_keywords in range(min_keywords, max_keywords + 1):
         # Until the third-last word
@@ -116,7 +116,7 @@ def adjoined_candidates_from_sentence(s, stoplist, min_keywords, max_keywords):
                 candidate = sl[i]
                 # Initializes j (the pointer to the next word) to 1
                 j = 1
-                # Initializes the word counter. This counts the non-stowords words in the candidate
+                # Initializes the word counter. This counts the non-stopwords words in the candidate
                 keyword_counter = 1
                 contains_stopword = False
                 # Until the word count reaches the maximum number of keywords or the end is reached
@@ -135,7 +135,7 @@ def adjoined_candidates_from_sentence(s, stoplist, min_keywords, max_keywords):
                 # AND
                 # 2) the last word is not a stopword
                 # AND
-                # 3) the adjoined candidate keyphrase contains exactly the correct number of keywords
+                # 3) the adjoined candidate keyphrase contains exactly the correct number of keywords (to avoid doubles)
                 if contains_stopword and candidate.split()[-1] not in stoplist and keyword_counter == num_keywords:
                     candidates.append(candidate)
     return candidates
@@ -145,11 +145,12 @@ def adjoined_candidates_from_sentence(s, stoplist, min_keywords, max_keywords):
 # Function that filters the adjoined candidates to keep only those that appears with a certain frequency
 #
 def filter_adjoined_candidates(candidates, min_freq):
-    # creates a dictionary where the key is the candidate and the value is the frequency of the candidate
+    # Creates a dictionary where the key is the candidate and the value is the frequency of the candidate
     candidates_freq = Counter(candidates)
     filtered_candidates = []
-    # Converts the dictionary in a list of 2-uples (candidate, frequency) and iterates over them
-    for candidate, freq in candidates_freq.items():
+    # Uses the dictionary to filter the candidates
+    for candidate in candidates:
+        freq = candidates_freq[candidate]
         if freq >= min_freq:
             filtered_candidates.append(candidate)
     return filtered_candidates
@@ -294,8 +295,6 @@ if test:
     totalKeywords = len(sortedKeywords)
     if debug: print(totalKeywords)
     print(sortedKeywords[0:(totalKeywords // 3)])
-
-    print('pippo')
 
     rake = Rake("SmartStoplist.txt")
     keywords = rake.run(text)
