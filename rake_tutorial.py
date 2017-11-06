@@ -44,8 +44,9 @@ for sentence in sentenceList:
     print("Sentence:", sentence)
 
 # generate candidate keywords
+stopwords = rake.load_stop_words(stoppath)
 stopwordpattern = rake.build_stop_word_regex(stoppath)
-phraseList = rake.generate_candidate_keywords(sentenceList, stopwordpattern)
+phraseList = rake.generate_candidate_keywords(sentenceList, stopwordpattern, stopwords)
 print("Phrases:", phraseList)
 
 # calculate individual word scores
