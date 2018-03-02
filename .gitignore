@@ -10,6 +10,7 @@ __pycache__/
 
 # Distribution / packaging
 .Python
+.DS_STORE
 env/
 bin/
 build/

@@ -8,7 +8,7 @@ import operator
 import io
 
 # EXAMPLE ONE - SIMPLE
-stoppath = "SmartStoplist.txt"
+stoppath = "data/stoplists/SmartStoplist.txt"
 
 # 1. initialize RAKE by providing a path to a stopwords file
 rake_object = rake.Rake(stoppath, 5, 3, 4)
